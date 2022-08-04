@@ -1,0 +1,108 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  8
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      yPlus;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 0 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    INLET
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    OUTLET
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    TOP
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    BOTTOM
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    CYLINDER
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    JET1
+    {
+        type            calculated;
+        value           nonuniform List<scalar> 
+17
+(
+0.37989787
+0.46048236
+0.44616868
+0.48527914
+0.23165732
+0.38018112
+0.26311948
+0.50224272
+0.50530009
+0.15790632
+0.15048208
+0.43023222
+0.47289869
+0.32814306
+0.33061893
+0.51743986
+0.38475219
+)
+;
+    }
+    JET2
+    {
+        type            calculated;
+        value           nonuniform List<scalar> 
+17
+(
+0.48731894
+0.47068086
+0.39003478
+0.46460829
+0.13435072
+0.25743074
+0.47470883
+0.44176896
+0.5230263
+0.39252763
+0.33299945
+0.5082924
+0.13952834
+0.33562721
+0.4463662
+0.27136176
+0.49290541
+)
+;
+    }
+    frontAndBackPlanes
+    {
+        type            empty;
+    }
+}
+
+
+// ************************************************************************* //
