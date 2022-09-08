@@ -1,20 +1,76 @@
-# Attention
+# DRLinFluids-examples 
 
-Here is the temporary repository of two DRL cases in the [article](https://aip.scitation.org/doi/10.1063/5.0103113) with the **primitive** DRLinFluids package. 
+Here is the repository of two DRL cases mentioned in the [article](https://aip.scitation.org/doi/10.1063/5.0103113) with the **primitive** DRLinFluids package. We provide this repository for quick understanding and testing, and the DRLinFluids package is now available on [This page](https://github.com/venturi123/DRLinFluids).
 
-We provide this repository for quick understanding and testing only, and the user-friendly DRLinFluids package will be uploaded on the [DRLinFluids](https://github.com/venturi123/DRLinFluids) page as soon as possible.
+> **Note**  
+> This repository is for backup only. We highly suggest running the experiments in a docker or singularity container. A short introduction to creating containers, exporting them, and using them in your own **Linux** device is described as follows.
 
-
-
-# Compiling new boundary conditions in OpenFOAM v8
+## Using through Docker container (recommended)
 
 ```bash
+ docker pull dolores1900/drlinfluids:v2
+ docker image ls
+ docker run -itd -u 98765 -v /root:/root new_drlinfluids:latest /bin/bash  # Run Docker as a non-root user
+ docker ps 
+ docker exec -it $(container_id) /bin/bash    # Run Docker as a non-root user
+ #cylinder_training
+ cd DRLinfluids/DRLinFluids_cylinder
+ python DRLinFluids_cylinder/launch_multiprocessing_traning_cylinder.py
+ #square_training
+ cd DRLinfluids/DRLinFluids_square
+ python DRLinFluids_square/launch_multiprocessing_traning_square.py
+```
+
+## Using through Singularity container (recommended)
+
+```bash
+ # must run singularity as a non-root user
+ sudo singularity build DRLinfluids.sif docker://dolores1900/drlinfluids:v2
+ singularity build --sandbox DRLinfluids_sandbox/ DRLinfluids.sif
+ singularity shell -w DRLinfluids_sandbox/ 
+ # Setting in OpenFOAMv8 in newbc
+ source /opt/openfoam8/etc/bashrc    
+ cd DRLinfluids/newbc
+ wclean
+ wmake
+ # cylinder_training
+ cd DRLinfluids/DRLinFluids_cylinder
+ python DRLinFluids_cylinder/launch_multiprocessing_traning_cylinder.py
+ #square_training
+ cd DRLinfluids/DRLinFluids_square
+ python DRLinFluids_square/launch_multiprocessing_traning_square.py
+```
+
+## Installing by hand (discouraged)
+
+> **Note**  
+> Before launching any script, check that you have installed completed dependencies. (tested on Ubuntu 20.04)
+
+```
+numpy==1.19.5
+pandas==1.3.3
+PeakUtils==1.3.3
+scipy==1.7.1
+Tensorforce==0.6.5
+```
+
+### Step 1: Compiling new boundary conditions in OpenFOAM v8
+
+The *wmake* script is executed by typing:
+
+```
+# Setting proper OpenFOAM environment variables in Linux (according to actual situation)
+source ~/OpenFOAM/OpenFOAM-8/etc/bashrc
+
+cd DRLinFluids-examples/newbc/jetParabolicVelocity
 wmake
 ```
 
+For more details, see https://doc.cfd.direct/openfoam/user-guide-v8/compiling-applications#dx10-78001
 
+### Step 2: Running Python scripts
 
-# QuickStart example code in cylinder2D_multiprocessing
+#### QuickStart example code in cylinder2D_multiprocessing
 
 ```python
 from tensorforce import Runner, Agent,Environment
@@ -78,12 +134,9 @@ agent.close()
 environment.close()
 ```
 
-
-
-# QuickStart example code in square2D_multiprocessing
+#### QuickStart example code in square2D_multiprocessing
 
 ```python
-
 # Pre-defined or custom environment
 train_envs = SubprocVectorEnv(
         [lambda x=i: gym.make(args.task,foam_root_path=x,
@@ -129,19 +182,15 @@ result = offpolicy_trainer(
     )
 ```
 
-
-
-# Command line usage in cylinder2D_multiprocessing
-
+#### Command line usage in cylinder2D_multiprocessing
 
 ```bash
 python DRLinFluids_cylinder/launch_multiprocessing_traning_cylinder
 ```
 
-
-
-# Command line usage in square2D_multiprocessing
+#### Command line usage in square2D_multiprocessing
 
 ```bash
 python DRLinFluids_square/launch_multiprocessing_traning_square
-```
+````
+
