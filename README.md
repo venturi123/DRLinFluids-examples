@@ -14,10 +14,10 @@ Here is the repository of two DRL cases mentioned in the [article](https://aip.s
  docker ps 
  docker exec -it $(container_id) /bin/bash    # Run Docker as a non-root user
  #cylinder_training
- cd DRLinfluids/DRLinFluids_cylinder
+ cd DRLinfluids/cylinder2D_multiprocessing
  python DRLinFluids_cylinder/launch_multiprocessing_traning_cylinder.py
  #square_training
- cd DRLinfluids/DRLinFluids_square
+ cd DRLinfluids/square2D_multiprocessing
  python DRLinFluids_square/launch_multiprocessing_traning_square.py
 ```
 
@@ -34,10 +34,10 @@ Here is the repository of two DRL cases mentioned in the [article](https://aip.s
  wclean
  wmake
  # cylinder_training
- cd DRLinfluids/DRLinFluids_cylinder
+ cd DRLinfluids/cylinder2D_multiprocessing
  python DRLinFluids_cylinder/launch_multiprocessing_traning_cylinder.py
  #square_training
- cd DRLinfluids/DRLinFluids_square
+ cd DRLinfluids/square2D_multiprocessing
  python DRLinFluids_square/launch_multiprocessing_traning_square.py
 ```
 
