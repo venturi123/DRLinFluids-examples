@@ -29,7 +29,7 @@ Here is the repository of two DRL cases mentioned in the [article](https://aip.s
  singularity build --sandbox DRLinfluids_sandbox/ DRLinfluids.sif
  singularity shell -w DRLinfluids_sandbox/ 
  # Setting in OpenFOAMv8 in newbc
- source /opt/openfoam8/etc/bashrc    
+ source /opt/openfoam8/etc/bashrc    #OpenFOAM compile boundary conditions
  cd DRLinfluids/newbc
  wclean
  wmake
