@@ -51,7 +51,9 @@ numpy==1.19.5
 pandas==1.3.3
 PeakUtils==1.3.3
 scipy==1.7.1
-Tensorforce==0.6.5
+Tensorforce==0.6.0
+tianshou==0.4.7
+gym==0.19.0
 ```
 
 ### Step 1: Compiling new boundary conditions in OpenFOAM v8
