@@ -10,19 +10,6 @@ import os
 import re
 import envobject
 
-# from simulation_base.env import resume_env, nb_actuations
-# from RemoteEnvironmentClient import RemoteEnvironmentClient
-
-# ap = argparse.ArgumentParser()
-# ap.add_argument("-n", "--number-servers", required=True, help="number of servers to spawn", type=int)
-# ap.add_argument("-p", "--ports-start", required=True, help="the start of the range of ports to use", type=int)
-# ap.add_argument("-t", "--host", default="None", help="the host; default is local host; string either internet domain or IPv4", type=str)
-#
-# args = vars(ap.parse_args())
-# number_servers = args["number_servers"]
-# ports_start = args["ports_start"]
-# host = args["host"]
-
 number_servers=1
 nb_actuations = 400 #Nombre d'actuations du reseau de neurones par episode
 nstate=1
@@ -32,9 +19,9 @@ naction=1
 foam_params = {
     'delta_t': 0.0005,
     'solver': 'pimpleFoam',
-    'num_processor': 4,
+    'num_processor': 5,
     'of_env_init': 'source ~/OpenFOAM/OpenFOAM-8/etc/bashrc',
-    'cfd_init_time': 0.034,  # 初始化流场，初始化state
+    'cfd_init_time': 0.005,
     'num_dimension': 2,
     'verbose': False
 }
@@ -88,17 +75,13 @@ agent_params = {
     'verbose': False,
     "zero_net_Qs": True,
 }
-
 state_params = {
     'type': 'velocity'
 }
 print("Create CFD env")
 
-# \u83b7\u53d6\u5de5\u4f5c\u76ee\u5f55\u8def\u5f84
 root_path = os.getcwd()
-# \u83b7\u53d6Environment\u6587\u4ef6\u5939\u540d\u79f0\uff0c\u5e76\u6309\u7167\u5347\u5e8f\u6392\u5217\uff0croot_path + env_path_list\u5c31\u80fd\u83b7\u53d6\u6bcf\u4e00\u4e2a\u73af\u5883\u6587\u4ef6\u5939\u7684\u7edd\u5bf9\u8def\u5f84
 env_name_list = sorted([envs for envs in os.listdir(root_path) if re.search(r'^env\d+$', envs)])
-# \u65b0\u5efa\u4e00\u4e2aenvironment\u5bf9\u8c61\u5217\u8868
 environments = []
 for env_name in env_name_list:
     env = envobject.FlowAroundSquareCylinder2D(
@@ -155,15 +138,14 @@ print("define agent")
 # print(str(os.getcwd() + "/saved_models"),'/'.join([root_path, '/saved_models/checkpoint']))
 agent = Agent.load(directory=str(os.getcwd() + "/best_model"),
                                  format='checkpoint',
-                                 environment=env
-                   )
+                                 environment=env)
 
 def one_run():
     print("start simulation")
     states = env.reset()
     # env.render = True
 
-    for k in range(400):
+    for k in range(400):   # run 400 steps 
         #environment.print_state()
         internals = agent.initial_internals()
         actions,internals  = agent.act(states=states,internals =internals , deterministic=deterministic, independent=True)
@@ -172,9 +154,5 @@ def one_run():
 
     env.single_run_write()
 
-if not deterministic:
-    for _ in range(10):
-        one_run()
-
-else:
+if deterministic:
     one_run()
