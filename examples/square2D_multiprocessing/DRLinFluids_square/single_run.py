@@ -328,7 +328,7 @@ def test_sac_with_il(args=get_args()):
     # evaluation
     policy.eval()
     collector = Collector(policy, env)
-    env_step = 400
+    env_step = 400                 #NOTE: Pay attention to changing the number of steps per epoch to 400
     result = collector.collect(n_step=env_step,n_episode=None, render=args.render)
     rews, lens = result["rews"], result["lens"]
     print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
