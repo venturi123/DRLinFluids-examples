@@ -1,7 +1,7 @@
 # coding = UTF-8
 import re
 import datetime
-import envobject
+import envobject_square
 import argparse
 import os
 import numpy as np
@@ -10,15 +10,10 @@ import pprint
 from torch.utils.tensorboard import SummaryWriter
 import gym
 
-from tianshou.data import VectorReplayBuffer,Collector,AsyncCollector
-from tianshou.policy import SACPolicy,ImitationPolicy
-from tianshou.env import DummyVectorEnv,SubprocVectorEnv,RayVectorEnv,ShmemVectorEnv
-# from tianshou.trainer import offpolicy_trainer
-# from tensorfoam.openfoam import SubprocVectorEnv,offpolicy_trainer,DummyVectorEnv
-# from tensorfoam.openfoam import offpolicy_trainer
-# from tianshou.trainer import offpolicy_trainer
-from tianshou.trainer.utils import gather_info, test_episode
-# from tensorfoam.openfoam import AsyncCollector,Collector
+from tianshou.data import VectorReplayBuffer,AsyncCollector
+from tianshou.policy import SACPolicy
+from tianshou.env import SubprocVectorEnv
+from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -30,33 +25,31 @@ def get_args():
     parser.add_argument('--task', type=str, default='OpenFoam-v0')
     parser.add_argument('--reward-threshold', type=float, default=15.8)
     parser.add_argument('--seed', type=int, default=10)
-    parser.add_argument('--buffer-size', type=int, default=100000)
-    parser.add_argument('--actor-lr', type=float, default=2e-4)
-    parser.add_argument('--critic-lr', type=float, default=3e-4)
+    parser.add_argument('--buffer-size', type=int, default=20000)
+    parser.add_argument('--actor-lr', type=float, default=1e-3)
+    parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--il-lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.97)
+    parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
-    #温度系数
-    parser.add_argument('--alpha', type=float, default=0.5)
+    parser.add_argument('--alpha', type=float, default=0.2)
     parser.add_argument('--auto-alpha', type=int, default=1)
     parser.add_argument('--alpha-lr', type=float, default=3e-4)
     parser.add_argument('--epoch', type=int, default=3000)
-    #所有环境一起计算epoch
-    parser.add_argument('--step-per-epoch', type=int, default=500)
+    parser.add_argument('--step-per-epoch', type=int, default=100)
     parser.add_argument('--il-step-per-epoch', type=int, default=1)
     parser.add_argument('--step-per-collect', type=int, default=20)
     parser.add_argument('--update-per-step', type=float, default=0.1)
-    parser.add_argument('--batch-size', type=int, default=512)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[512,128])
+    parser.add_argument('--batch-size', type=int, default=256)
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[512,512])
     parser.add_argument(
-        '--imitation-hidden-sizes', type=int, nargs='*', default=[512, 256]
+        '--imitation-hidden-sizes', type=int, nargs='*', default=[512, 512]
     )
-    parser.add_argument('--training-num', type=int, default=0)
+    parser.add_argument('--training-num', type=int, default=5)
     parser.add_argument('--test-num', type=int, default=1)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument('--rew-norm', action="store_true", default=False)
-    parser.add_argument('--n-step', type=int, default=4)
+    parser.add_argument('--n-step', type=int, default=5)
     parser.add_argument("--save-interval", type=int, default=1)
     parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
@@ -92,20 +85,16 @@ def get_args():
     shell_args['max_episode_timesteps']=100
     return args
 
-
-#SAC算法
 def test_sac_with_il(args=get_args()):
-    # torch.set_num_threads(1)  # we just need only one thread for NN
-    # env = gym.make(args.task)
     # define parameters
     # Make environments:
     # you can also try with SubprocVectorEnv
     foam_params = {
-        'delta_t': 0.00025,
+        'delta_t': 0.0005,
         'solver': 'pimpleFoam',
-        'num_processor': 4,
+        'num_processor': 5,
         'of_env_init': 'source ~/OpenFOAM/OpenFOAM-8/etc/bashrc',
-        'cfd_init_time': 0.001,  # 初始化流场，初始化state
+        'cfd_init_time': 0.005,  # 初始化流场，初始化state
         'num_dimension': 2,
         'verbose': False
     }
@@ -148,14 +137,11 @@ def test_sac_with_il(args=get_args()):
         'entry_dict_q1': entry_dict_q1,
         'entry_dict_t0': entry_dict_t0,
         'deltaA': 0.05,
-        'minmax_value': (-1, 1),
-        'interaction_period': 0.017,
-        'vortex_shedding':0.23,
-        'action_discount':0.1,
-        'cd_0': 2.27,
+        'minmax_value': (-4, 4),
+        'interaction_period': 0.013,
         'purgeWrite_numbers': 0,
-        'writeInterval': 0.017,
-        'deltaT': 0.00025,
+        'writeInterval': 0.013,
+        'deltaT': 0.0005,
         'variables_q0': ('x',),
         'variables_q1': ('y',),
         'variables_t0': ('t',),
@@ -163,13 +149,10 @@ def test_sac_with_il(args=get_args()):
         "zero_net_Qs": True,
     }
     state_params = {
-        'type': 'pressure'
+        'type': 'velocity'
     }
     root_path = os.getcwd()
-    # envs=[]
-    # \u83b7\u53d6Environment\u6587\u4ef6\u5939\u540d\u79f0\uff0c\u5e76\u6309\u7167\u5347\u5e8f\u6392\u5217\uff0croot_path + env_path_list\u5c31\u80fd\u83b7\u53d6\u6bcf\u4e00\u4e2a\u73af\u5883\u6587\u4ef6\u5939\u7684\u7edd\u5bf9\u8def\u5f84
     env_name_list = sorted([envs for envs in os.listdir(root_path) if re.search(r'^env\d+$', envs)])
-    # \u8bbe\u7f6eEnvironments list
     env_path_list = ['/'.join([root_path, i]) for i in env_name_list]
 
     env = envobject.FlowAroundSquareCylinder2D(
@@ -262,30 +245,11 @@ def test_sac_with_il(args=get_args()):
     )
 
     # collector
-    # train_collector = AsyncCollector(
-    #     policy,
-    #     train_envs,
-    #     VectorReplayBuffer(args.buffer_size, len(train_envs)),
-    #     exploration_noise=True
-    # )
     train_collector=None
-    # result = train_collector.collect( n_step=5)
-    # rews, lens = result["rews"], result["lens"]
-    # print("4")
-    # print("5",result["len"],result["lens"],lens.mean())
     test_collector = AsyncCollector(policy, test_envs,)
-    # test_collector=None
-    # train_collector.collect(n_step=args.buffer_size)
 
     # log
-    # now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    # args.algo_name = "dqn_icm" if args.icm_lr_scale > 0 else "sac"
-    # log_name =
     log_path = os.path.join(args.logdir, args.task, 'sac')
-    # writer = SummaryWriter(log_path)
-    # logger = TensorboardLogger(writer, save_interval=args.save_interval)
-    # log_name = os.path.join(now)
-    # log_path = os.path.join(args.logdir, log_name)
 
     # logger
     writer = SummaryWriter(log_path)
@@ -318,10 +282,6 @@ def test_sac_with_il(args=get_args()):
                 # 'optim': optim.state_dict(),
             }, os.path.join(log_path, 'checkpoint.pth')
         )
-        # pickle.dump(
-        #     train_collector.buffer,
-        #     open(os.path.join(log_path, 'train_buffer.pkl'), "wb")
-        # )
 
     def train_fn(epoch, env_step):
         # eps annnealing, just a demo
@@ -340,7 +300,7 @@ def test_sac_with_il(args=get_args()):
     if args.resume:
         # load from existing checkpoint
         print(f"Loading agent under {log_path}")
-        ckpt_path = os.path.join(log_path, 'best_model.pth')
+        ckpt_path = os.path.join(log_path, 'best_model.pth')    #choose your best policy to test
         if os.path.exists(ckpt_path):
             checkpoint = torch.load(ckpt_path, map_location=args.device)
             policy.load_state_dict(checkpoint['model'])
@@ -351,7 +311,6 @@ def test_sac_with_il(args=get_args()):
 
     print(policy.training,policy.updating)
     # trainer
-
     start_epoch=0
     env_step=0
     gradient_step=0
@@ -369,28 +328,10 @@ def test_sac_with_il(args=get_args()):
     # evaluation
     policy.eval()
     collector = Collector(policy, env)
-    env_step = 200
+    env_step = 400
     result = collector.collect(n_step=env_step,n_episode=None, render=args.render)
     rews, lens = result["rews"], result["lens"]
     print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
-
-    # if self.stop_fn and self.stop_fn(self.best_reward):
-    #     stop_fn_flag = True
-
-    # if save_fn:
-    #     deprecation(
-    #         "save_fn in trainer is marked as deprecated and will be "
-    #         "removed in the future. Please use save_best_fn instead."
-    #     )
-    #     assert save_best_fn is None
-    #     save_best_fn = save_fn
-    # save_best_fn = save_best_fn
-    # if save_best_fn:
-    #     save_best_fn(policy)
-    #断言可以在条件不满足程序运行的情况下直接返回错误，而不必等待程序运行后出现崩溃
-    #存在test_collector才有best_reward
-    # assert stop_fn(result['best_reward'])
-    # print("anything done")
 
 
 if __name__ == '__main__':
